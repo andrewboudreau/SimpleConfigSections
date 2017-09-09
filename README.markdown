@@ -154,3 +154,9 @@ Note that, as with any ConfigurationSection a validation occurs when retreiving 
 will be thrown when you call
 
 	Configuration.Get<ISectionWithValidators>();
+	
+Running Machine Specs
+---------------------
+You can run the machine specifications to ensure the system is behaving according to the specification. Using,
+
+	.\mspec-clr4.exe .\Tests.SimpleConfigSections.dll
