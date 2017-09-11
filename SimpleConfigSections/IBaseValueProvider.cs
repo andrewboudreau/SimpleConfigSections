@@ -1,9 +1,7 @@
-﻿using System.Reflection;
-
-namespace SimpleConfigSections
+﻿namespace SimpleConfigSections
 {
     internal interface IBaseValueProvider
     {
-        object this[PropertyInfo property] { get; }
+        object this[string propertyName] { get; }
     }
 }

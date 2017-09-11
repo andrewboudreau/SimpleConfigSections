@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Reflection;
 using System.Runtime.CompilerServices;
 using Castle.DynamicProxy;
 using SimpleConfigSections.BasicExtensions;
@@ -24,8 +23,8 @@ namespace SimpleConfigSections
                 invocation.Method.HasAttribute<CompilerGeneratedAttribute>()
                 )
             {
-                var propertyInfo = invocation.Method.GetPropertyInfo();
-                invocation.ReturnValue = _configValue.Value(propertyInfo);
+                object obj = _configValue.Value(invocation.Method.PropertyName());
+                invocation.ReturnValue = obj;
             } else
             {
                 invocation.Proceed();
@@ -38,10 +37,6 @@ namespace SimpleConfigSections
             if(definingType.IsInterface)
             {
                 return ProxyGenerator.CreateInterfaceProxyWithoutTarget(definingType, this);    
-            }
-            if(definingType.IsArray)
-            {
-                return Array.CreateInstance(definingType.GetElementType(), 0);
             }
             return ProxyGenerator.CreateClassProxy(definingType, this);
 

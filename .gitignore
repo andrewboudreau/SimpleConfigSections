@@ -11,3 +11,6 @@ Tests.SimpleConfigSections/obj
 Tests.SimpleConfigSections/*/Nuget
 nugetpackage/*.nupkg
 nugetpackage/lib/net35/*
+/.vs
+/.vscode
+/packages/*

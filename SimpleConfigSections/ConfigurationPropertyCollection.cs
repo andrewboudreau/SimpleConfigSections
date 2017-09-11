@@ -6,22 +6,26 @@ using System.Configuration;
 using System.Linq;
 using System.Reflection;
 
-using SimpleConfigSections.BasicExtensions;
-
 namespace SimpleConfigSections
 {
     internal class ConfigurationPropertyCollection : IEnumerable<ConfigurationProperty>
     {
-        //private readonly Type _ownerType;
+        private readonly Type _ownerType;
         private readonly IEnumerable<ConfigurationProperty> _properties;
-        private readonly IConfigurationPropertyFactory _configurationPropertyFactory;
+        private readonly ConfigurationPropertyFactory _configurationPropertyFactory;
+        private readonly ConfigurationElementHiddenPropertyBagModifier _hiddenPropertyBagModifier;
 
         public ConfigurationPropertyCollection(Type interfaceType, Type ownerType)
         {
-            //_ownerType = ownerType;
-            _configurationPropertyFactory = ConfigurationPropertyFactory.Create();
-            _properties = GetPublicProperties(interfaceType).Select(CreateConfigurationProperty);
+            _ownerType = ownerType;
+
+            var propertyInfos = GetPublicProperties(interfaceType);                        
+            _properties = propertyInfos.Select(CreateConfigurationProperty);
+            _configurationPropertyFactory = new ConfigurationPropertyFactory();
+            _hiddenPropertyBagModifier = new ConfigurationElementHiddenPropertyBagModifier();
+
         }
+
 
         public IEnumerator<ConfigurationProperty> GetEnumerator()
         {
@@ -33,18 +37,22 @@ namespace SimpleConfigSections
             return GetEnumerator();
         }
 
+
         private ConfigurationProperty CreateConfigurationProperty(PropertyInfo pi)
         {
             var propertyType = pi.PropertyType;
             ConfigurationProperty result = null;
             if (propertyType.IsInterface)
             {
-                if (propertyType.IsGenericIEnumerable())
+                if (propertyType.IsGenericType)
                 {
-                    var elementType = propertyType.GetGenericArguments()[0];
-                    result = elementType.IsEnum ?
-                        _configurationPropertyFactory.Simple(pi)
-                        : _configurationPropertyFactory.Collection(pi, elementType);
+                    var genericTypeDefinition = propertyType.GetGenericTypeDefinition();
+
+                    if (genericTypeDefinition == typeof (IEnumerable<>))
+                    {
+                        var elementType = propertyType.GetGenericArguments()[0];
+                        result = _configurationPropertyFactory.Collection(pi, elementType);
+                    }
                 }else
                 {
                     result = _configurationPropertyFactory.Interface(pi);
@@ -61,10 +69,11 @@ namespace SimpleConfigSections
                 }
             }
 
+            _hiddenPropertyBagModifier.AddConfigurationProperty(result, _ownerType);
             return result;
         }
 
-        private static PropertyInfo[] GetPublicProperties(Type type)
+        public static PropertyInfo[] GetPublicProperties(Type type)
         {
             if (type.IsInterface)
             {

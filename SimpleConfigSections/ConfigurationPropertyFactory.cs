@@ -5,24 +5,50 @@ using System.Configuration;
 using System.Reflection;
 using Castle.Core.Internal;
 
-using System.Linq;
-
 namespace SimpleConfigSections
 {
-    internal abstract partial class ConfigurationPropertyFactory
+    internal class ConfigurationPropertyFactory
     {
+        private static readonly Action<ConfigurationProperty, string> SetAddElementName = CreateFieldSetterDelegate("_addElementName");
+
+        private static readonly Action<ConfigurationProperty, string> SetRemoveElementName= CreateFieldSetterDelegate("_removeElementName");
+
+        private static readonly Action<ConfigurationProperty, string> SetClearElementName= CreateFieldSetterDelegate("_clearElementName");
+
         public ConfigurationPropertyFactory()
         {
         }
 
-        public ConfigurationProperty Interface(PropertyInfo pi)
+        internal ConfigurationProperty Collection(PropertyInfo propertyInfo, Type elementType)
+        {
+            var propertyName = propertyInfo.Name;
+            
+            var collectionType = typeof (ConfigurationElementCollectionForInterface<>).MakeGenericType(elementType);
+            
+            var namingConvention = NamingConvention.Current;
+
+            var property = new ConfigurationProperty(propertyName,
+                                                     collectionType,
+                                                     GetDefaultValue(propertyInfo),
+                                                     null,
+                                                     GetValidator(propertyInfo),
+                                                     GetOptions(propertyInfo));
+
+            SetAddElementName(property, namingConvention.AddToCollectionElementName(elementType, propertyName));
+            SetRemoveElementName(property, namingConvention.RemoveFromCollectionElementName(elementType, propertyName));
+            SetClearElementName(property, namingConvention.ClearCollectionElementName(elementType, propertyName));
+            
+            return property;
+        }
+
+        internal ConfigurationProperty Interface(PropertyInfo pi)
         {
             return NewConfigurationProperty(pi, 
                 typeof(ConfigurationElementForInterface<>).MakeGenericType(pi.PropertyType));
           
         }
 
-        public ConfigurationProperty Simple(PropertyInfo pi)
+        internal ConfigurationProperty Simple(PropertyInfo pi)
         {
             return NewConfigurationProperty(pi, pi.PropertyType);
         }
@@ -32,21 +58,19 @@ namespace SimpleConfigSections
             return Interface(pi);
         }
 
-        protected ConfigurationProperty NewConfigurationProperty(PropertyInfo pi, Type elementType)
+        private ConfigurationProperty NewConfigurationProperty(PropertyInfo pi, Type elementType)
         {
-            var name = NamingConvention.Current.AttributeName(pi);
             var options = GetOptions(pi);
             var defaultValue = GetDefaultValue(pi);
-            var validator = GetValidator(pi);
-            var converter = TypeDescriptor.GetProperties(pi.DeclaringType)[pi.Name].Converter ?? TypeDescriptor.GetConverter(elementType);
-            var configurationProperty = new ConfigurationProperty(name, elementType, defaultValue, converter, validator, options);
+            var validator = GetValidator(pi);            
+            var configurationProperty = new ConfigurationProperty(pi.Name, elementType, defaultValue, TypeDescriptor.GetConverter(elementType), validator, options);            
             return configurationProperty;
         }
 
-        private static ConfigurationPropertyOptions GetOptions(MemberInfo mi)
+        private static ConfigurationPropertyOptions GetOptions(PropertyInfo pi)
         {
             var options = ConfigurationPropertyOptions.None;
-            var requiredAttribute = mi.GetAttribute<RequiredAttribute>();
+            var requiredAttribute = pi.GetAttribute<RequiredAttribute>();
             if (requiredAttribute != null)
             {
                 options = ConfigurationPropertyOptions.IsRequired;
@@ -62,33 +86,23 @@ namespace SimpleConfigSections
             {
                 defaultValue = defaultAttribute.Default();
             }
-            
-            if (defaultValue == null)
-            {
-                var attribute = member.GetAttribute<DefaultValueAttribute>();
-                if (attribute != null)
-                {
-                    defaultValue = attribute.Value;
-                }
-            }
-
             return defaultValue;
         }
 
-        private static ConfigurationValidatorBase GetValidator(MemberInfo mi)
+        private static ConfigurationValidatorBase GetValidator(PropertyInfo pi)
         {
             ConfigurationValidatorBase validator = new DefaultValidator();
-            var validators = mi.GetAttributes<ValidationAttribute>();
+            var validators = pi.GetAttributes<ValidationAttribute>();
             if (validators.IsNullOrEmpty() == false)
             {
-                validator = new CompositeConfigurationValidator(validators, mi.Name);
+                validator = new CompositeConfigurationValidator(validators, pi.Name);
             }
             return validator;
         }
 
-        public static IConfigurationPropertyFactory Create()
+        private static Action<ConfigurationProperty, string> CreateFieldSetterDelegate(string fieldName)
         {
-            return ReflectionHelpers.RunningOnMono ? new MonoFactory() as IConfigurationPropertyFactory : new DotNetFactory();
+            return typeof (ConfigurationProperty).MakeSetterForPrivateField<ConfigurationProperty, string>(fieldName);
         }
     }
 }

@@ -1,72 +1,41 @@
 using System;
-using System.Collections.Generic;
-using System.Linq;
+using System.Linq.Expressions;
 using System.Reflection;
 using System.Reflection.Emit;
+using Castle.DynamicProxy.Contributors;
 
 namespace SimpleConfigSections
 {
     internal static class ReflectionHelpers
     {
-        private static readonly BindingFlags _privateFlags = BindingFlags.Instance | BindingFlags.DeclaredOnly | BindingFlags.NonPublic;
-
-        public static bool RunningOnMono
+        private static FieldInfo GetPrivateField(this Type type, string fieldName)
         {
-            get
+            return type.GetField(fieldName, BindingFlags.Instance | BindingFlags.DeclaredOnly | BindingFlags.NonPublic);
+        }
+
+        private delegate void ByRefStructAction<TTarget, TValue>(ref TTarget instance, TValue value);
+
+        private static Action<TTarget, TValue> MakeSetter<TTarget, TValue>(this FieldInfo field)
+        {
+            var instance = Expression.Parameter(typeof(TTarget).MakeByRefType(), "instance");
+            var value = Expression.Parameter(typeof(TValue), "value");
+
+            var binaryExpression = Expression.Assign(
+                Expression.Field(instance, field),
+                Expression.Convert(value, field.FieldType)
+                );
+            var refStructAction = Expression.Lambda<ByRefStructAction<TTarget, TValue>>(binaryExpression, instance, value).Compile();
+            var byRefStructAction = refStructAction;
+            return (owner, value1) =>
             {
-                Type t = Type.GetType("Mono.Runtime");
-                if (t != null)
-                    return true;
-
-                return false;
-            }
+                TTarget target = owner; 
+                byRefStructAction.Invoke(ref target, value1); 
+            };
         }
 
-        internal static FieldInfo GetPrivateField<TType>(string fieldName)
+        internal static Action<TOwner,TFieldType> MakeSetterForPrivateField<TOwner,TFieldType>(this Type ownerType, string fieldName)
         {
-            return GetPrivateField(typeof(TType), fieldName);
-        }
-
-        internal static FieldInfo GetPrivateField(Type type, string fieldName)
-        {
-            return type.GetField(fieldName, _privateFlags);
-        }
-
-        internal static PropertyInfo GetPrivateProperty<TType>(string propertyName)
-        {
-            return typeof(TType).GetProperty(propertyName, _privateFlags);
-        }
-
-        internal static Action<TOwner, TFieldType> MakeSetterForPrivateField<TOwner, TFieldType>(string fieldName)
-        {
-            var field = GetPrivateField<TOwner>(fieldName);
-            return field != null ? (obj, value) => field.SetValue(obj, value) : (Action<TOwner, TFieldType>)null;
-        }
-
-        internal static Action<TOwner, TFieldType> MakeSetterForPrivateProperty<TOwner, TFieldType>(string propertyName)
-        {
-            var property = GetPrivateProperty<TOwner>(propertyName);
-            return property != null ? (obj, value) => property.SetValue(obj, value, null) : (Action<TOwner, TFieldType>)null;
-        }
-
-        public static bool IsGenericIEnumerable(this Type ptype, params Type[] arguments)
-        {
-            if (!ptype.IsGenericType) return false;
-
-            var genericTypeDefinition = ptype.GetGenericTypeDefinition();
-            if (genericTypeDefinition != typeof(IEnumerable<>)) return false;
-
-            if (arguments != null && arguments.Length > 0)
-            {
-                return Enumerable.SequenceEqual(ptype.GetGenericArguments(), arguments);
-            }
-
-            return true;
-        }
-
-        public static bool IsGenericIEnumerable(this PropertyInfo property, params Type[] arguments)
-        {
-            return property.PropertyType.IsGenericIEnumerable();
+            return ownerType.GetPrivateField(fieldName).MakeSetter<TOwner, TFieldType>();
         }
     }
 }

@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Reflection;
 using SimpleConfigSections.BasicExtensions;
 
 namespace SimpleConfigSections
@@ -10,13 +9,10 @@ namespace SimpleConfigSections
 
         public static INamingConvention Current
         {
-            get {
-                return _current;
-
-            }
+            get { return _current; }
             set
             {
-                if (value == null)
+                if(value == null)
                 {
                     throw new ArgumentException("Convention must not be null","value");
                 }
@@ -33,7 +29,7 @@ namespace SimpleConfigSections
 
         public string SectionNameByIntefaceOrClassType(Type classOrInterface)
         {
-            if (classOrInterface.IsInterface)
+            if(classOrInterface.IsInterface)
             {
                 return SectionNameByIntefaceType(classOrInterface);
             }else
@@ -73,11 +69,6 @@ namespace SimpleConfigSections
         public virtual string ClearCollectionElementName(Type collectionElementType, string propertyName)
         {
             return "clear";
-        }
-
-        public virtual string AttributeName(PropertyInfo propertyInfo)
-        {
-            return propertyInfo.Name;
         }
 
         private class CheckForInvalidNamesDecorator : INamingConvention
@@ -134,19 +125,13 @@ namespace SimpleConfigSections
                         conv => conv.SectionNameByIntefaceTypeAndPropertyName(propertyType, propertyName));
             }
 
-            public string AttributeName(PropertyInfo propertyInfo)
-            {
-                return IfEmptyStringThenDefault(conv => conv.AttributeName(propertyInfo));
-            }
-
             private string IfEmptyStringThenDefault(Func<INamingConvention, string> convention)
             {
                 var propsedName = convention(_realConvention);
                 if(propsedName.IsNullOrEmptyOrWhiteSpace())
                 {
-                    propsedName = convention(_defaultConvention);
+                    return convention(_defaultConvention);
                 }
-
                 return propsedName;
             }
         }

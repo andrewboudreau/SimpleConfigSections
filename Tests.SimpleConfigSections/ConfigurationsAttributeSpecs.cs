@@ -1,4 +1,3 @@
-using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.Configuration;
 using Machine.Specifications;
@@ -11,7 +10,7 @@ namespace Tests.SimpleConfigSections
     {
         private It should_throw_configuration_error_exception =
             () => Catch.Exception(() => Configuration.Get<ISectionWithRequiredAttribute>())
-                      .ShouldBeOfType(typeof (ConfigurationErrorsException));
+                      .ShouldBeOfExactType<ConfigurationErrorsException>();
     }
 
     public class when_reading_configuration_with_default_attribute_setting
@@ -39,7 +38,7 @@ namespace Tests.SimpleConfigSections
         [Default(DefaultValue = "default attribute")]
         string DefaultStandardAttribute { get; set; }
 
-        [DefaultValue("should be overrided")]
+        [Default(DefaultValue = "should be overrided")]
         string SettedInConfig { get; set; }
         
     }

@@ -1,24 +1,15 @@
 ﻿using System;
 using System.ComponentModel;
-using System.ComponentModel.DataAnnotations;
-using System.Linq;
-using System.Reflection;
 using System.Text.RegularExpressions;
 using Machine.Specifications;
 using SimpleConfigSections;
-
-using ConfigurationErrorsException = System.Configuration.ConfigurationErrorsException;
 
 namespace Tests.SimpleConfigSections
 {
     public class when_reading_configuration_section_defined_as_class
     {
         private Because b =
-            () =>
-            {
-                Configuration.WithNamingConvention(new GetNameFromDisplayConvention());
-                section = Configuration.Get<SimpleConfiguration>();
-            };
+            () => section = Configuration.Get<SimpleConfiguration>();
 
         private It should_return_not_empty_configuration =
             () => section.ShouldNotBeNull();
@@ -43,24 +34,6 @@ namespace Tests.SimpleConfigSections
         private It should_read_child_class_configuration_properly =
             () => section.Child.ShouldNotBeNull();
 
-        private It Should_have_enum1_with_default_value =
-            () => section.Enum1.ShouldEqual(EnumWithDefault.Default);
-
-        private It Should_have_enum2_with_other_value =
-            () => section.Enum2.ShouldEqual(EnumWithDefault.Other);
-
-        private It Should_have_enum3_with_default_value =
-            () => section.Enum3.ShouldEqual((EnumWithNoDefault)0);
-
-        private It Should_have_enum4_with_second_value =
-            () => section.Enum4.ShouldEqual(EnumWithNoDefault.Second);
-
-        private It Should_have_number_with_value_from_config =
-            () => section.Number.ShouldEqual((ushort)6);
-
-        private It Should_have_another_number_with_default_value =
-            () => section.AnotherNumber.ShouldEqual((ushort)0);
-
         private Establish ctx =
             () =>
                 {
@@ -84,40 +57,14 @@ namespace Tests.SimpleConfigSections
         }
     }
 
-    public enum EnumWithDefault
-    {
-        Default = 0,
-        Other
-    }
-
-    public enum EnumWithNoDefault
-    {
-        First = 1,
-        Second = 2
-    }
-
     public class SimpleConfiguration
     {
-        [Display(Name = "name")]
         public virtual string Name { get; set; }
         public virtual int Count { get; set; }
 
         public virtual SimpleConfiguration Child { get; set; }
 
         public virtual Regex Matcher { get; set; }
-
-        public virtual EnumWithDefault Enum1 { get; set; }
-        [Default(DefaultValue = EnumWithDefault.Other)]
-        public virtual EnumWithDefault Enum2 { get; set; }
-
-        public virtual EnumWithNoDefault Enum3 { get; set; }
-        [Default(DefaultValue = EnumWithNoDefault.Second)]
-        public virtual EnumWithNoDefault Enum4 { get; set; }
-
-        [Display(Name = "number"), Range(1, 256)]
-        public virtual ushort Number { get; set; }
-
-        public virtual ushort AnotherNumber { get; set; }
 
         public string NameAndCount
         {
@@ -127,21 +74,6 @@ namespace Tests.SimpleConfigSections
         public virtual string NameAndCountVirtual
         {
             get { return NameAndCount; }
-        }
-    }
-
-    public class GetNameFromDisplayConvention : NamingConvention
-    {
-        public override string AttributeName(PropertyInfo propertyInfo)
-        {
-            var attr = propertyInfo.GetCustomAttributes(false).OfType<DisplayAttribute>().SingleOrDefault();
-
-            if (attr != null && !string.IsNullOrEmpty(attr.Name))
-            {
-                return attr.Name;
-            }
-
-            return base.AttributeName(propertyInfo);
         }
     }
 

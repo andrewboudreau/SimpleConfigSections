@@ -1,5 +1,4 @@
 using System;
-using System.Reflection;
 
 namespace SimpleConfigSections
 {
@@ -12,6 +11,5 @@ namespace SimpleConfigSections
         string ClearCollectionElementName(Type collectionElementType, string propertyName);
         string SectionNameByIntefaceOrClassType(Type classOrInterface);
         string SectionNameByClassType(Type classOrInterface);
-        string AttributeName(PropertyInfo propertyInfo);
     }
 }
